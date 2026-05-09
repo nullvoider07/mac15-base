@@ -1,14 +1,14 @@
 # =============================================================================
-# setup-mac15.ps1
-# One-command clone + automatic download of mac15.qcow2 into mac15-image/
+# setup.mac15.ps1
+# One-command clone + automatic download of mac15 files into mac15-image/
 # =============================================================================
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop' # Exit immediately if any command fails
 
-$GitHubRepo = "https://github.com/nullvoider07/mac15-base"
-$RepoName   = "mac15-base"
+$GithubRepo = "https://github.com/nullvoider07/mac15-base"
+$RepoName = Split-Path $GithubRepo -Leaf
 
-Write-Host "🚀 Cloning GitHub repo: $GitHubRepo" -ForegroundColor Cyan
+Write-Host "🚀 Cloning GitHub repo: $GithubRepo"
 
 # ----------------------------- Clone with GitHub CLI -----------------------
 Write-Host "🔧 Checking GitHub CLI..."
@@ -34,22 +34,23 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
 gh repo clone $GithubRepo $RepoName -- --depth=1
 
 # ----------------------------- Create folder -------------------------------
-Write-Host "📁 Creating folder: $RepoName/mac15-image/" -ForegroundColor Cyan
-New-Item -Path "$RepoName/mac15-image" -ItemType Directory -Force | Out-Null
+Write-Host "📁 Creating folder: mac15-image/"
+$ImagePath = Join-Path $RepoName "mac15-image"
+New-Item -ItemType Directory -Force -Path $ImagePath | Out-Null
 
 # ----------------------------- Ensure uv is available ---------------------
 Write-Host "🔧 Checking uv..."
 
 if (Get-Command uv -ErrorAction SilentlyContinue) {
-    Write-Host "   uv already available — skipping installation."
+    Write-Host "   ✅ uv already available — skipping installation."
 } else {
     Write-Host "   Installing uv package manager..."
     Invoke-RestMethod -Uri https://astral.sh/uv/install.ps1 | Invoke-Expression
     $env:Path += ";$HOME\.cargo\bin;$HOME\.local\bin"
 }
 
-# ----------------------------- Ephemeral venv for huggingface-cli ----------
-Write-Host "🔧 Creating ephemeral venv for huggingface-cli..."
+# ----------------------------- Ephemeral venv for hf -----------------------
+Write-Host "🔧 Creating ephemeral venv for hf..."
 
 $TempDir = [System.IO.Path]::GetTempPath()
 $HfVenv = Join-Path $TempDir "hf-venv-$(New-Guid)"
@@ -57,18 +58,18 @@ $HfVenv = Join-Path $TempDir "hf-venv-$(New-Guid)"
 # uv venv picks the correct current Python automatically
 uv venv $HfVenv --quiet
 
-# Install directly into the venv — no --system, no activation needed
-uv pip install --python "$HfVenv\Scripts\python.exe" transformers --quiet
+# Install huggingface_hub (lighter than transformers) directly into the venv
+uv pip install --python "$HfVenv\Scripts\python.exe" huggingface_hub --quiet
 
-Write-Host "   ✅ huggingface-hub installed in ephemeral venv."
+Write-Host "   ✅ hf installed in ephemeral venv."
 
-# ----------------------------- Download QCOW2 ------------------------------
-Write-Host "📥 Downloading mac15.qcow2 (large file) into $RepoName\mac15-image\ ..."
+# ----------------------------- Download Files ------------------------------
+Write-Host "📥 Downloading base.dmg and mac15.qcow2 (large files) into $RepoName\mac15-image\ ..."
 Write-Host "    (This may take a while — progress bar will show)"
 
-# Call huggingface-cli directly by its venv path — no PATH lookup, no cache
-& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base base.dmg --local-dir $RepoName\mac15-image
-& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base mac15.qcow2 --local-dir $RepoName\mac15-image
+# Call the 'hf' command directly by its venv path for both files
+& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base base.dmg --local-dir $ImagePath
+& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base mac15.qcow2 --local-dir $ImagePath
 
 # ----------------------------- Cleanup venv --------------------------------
 Write-Host "🧹 Cleaning up ephemeral venv..."
@@ -77,7 +78,7 @@ Remove-Item -Recurse -Force $HfVenv
 # ----------------------------- Final message -------------------------------
 Write-Host ""
 Write-Host "✅ SUCCESS!" -ForegroundColor Green
-Write-Host "   Repository cloned → $RepoName\" 
-Write-Host "   QCOW2 image ready at: $DownloadDir\mac15.qcow2"
+Write-Host "   Repository cloned → $RepoName\"
+Write-Host "   Images ready at: $RepoName\mac15-image\"
 Write-Host ""
-Write-Host "   Next time just run: cd $RepoName && git pull" -ForegroundColor Gray
+Write-Host "   Next time just run: cd $RepoName ; git pull"
