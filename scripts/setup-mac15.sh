@@ -37,6 +37,10 @@ fi
 
 gh repo clone "$GITHUB_REPO" "$REPO_NAME" -- --depth=1
 
+# ----------------------------- Create folder -------------------------------
+echo "📁 Creating folder: mac15-image/"
+mkdir -p "$REPO_NAME/mac15-image"
+
 # ----------------------------- Ensure uv is available ---------------------
 echo "🔧 Checking uv..."
 
@@ -70,6 +74,9 @@ echo "📥 Downloading mac15.qcow2 (large file) into $REPO_NAME/mac15-image/ ...
 echo "    (This may take a while — progress bar will show)"
 
 # Call huggingface-cli directly by its venv path — no PATH lookup, no cache
+"$HF_VENV/bin/hf" download NullVoider/mac15-base base.dmg \
+    --local-dir "$REPO_NAME/mac15-image"
+
 "$HF_VENV/bin/hf" download NullVoider/mac15-base mac15.qcow2 \
     --local-dir "$REPO_NAME/mac15-image"
 
