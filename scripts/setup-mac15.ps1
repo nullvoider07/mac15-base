@@ -67,8 +67,8 @@ Write-Host "📥 Downloading mac15.qcow2 (large file) into $RepoName\mac15-image
 Write-Host "    (This may take a while — progress bar will show)"
 
 # Call huggingface-cli directly by its venv path — no PATH lookup, no cache
-& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base base.dmg --local-dir $ImagePath
-& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base mac15.qcow2 --local-dir $ImagePath
+& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base base.dmg --local-dir $RepoName\mac15-image
+& "$HfVenv\Scripts\hf.exe" download NullVoider/mac15-base mac15.qcow2 --local-dir $RepoName\mac15-image
 
 # ----------------------------- Cleanup venv --------------------------------
 Write-Host "🧹 Cleaning up ephemeral venv..."
