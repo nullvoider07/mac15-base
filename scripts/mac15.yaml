@@ -1,0 +1,31 @@
+services:
+  macos:
+    image: dockurr/macos
+    container_name: macos
+    environment:
+      VERSION: "15"
+      DHCP: "N"
+      DISK_SIZE: "4T"
+      RAM_SIZE: "8G"
+      CPU_CORES: "4"
+      ARGUMENTS: "-device usb-tablet -qmp tcp:0.0.0.0:4444,server,nowait"
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+      - /dev/vhost-net
+    device_cgroup_rules:
+      - 'c *:* rwm'
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8006:8006
+      - 5900:5900/tcp
+      - 5900:5900/udp
+      - 4444:4444
+      - 4000:4000
+      - 9090:9090
+      - 2222:22
+    volumes:
+      - ./macos:/storage
+    restart: "no"
+    stop_grace_period: 2m

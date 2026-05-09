@@ -1,0 +1,86 @@
+#!/bin/bash
+# =============================================================================
+# setup-mac15.sh
+# One-command clone + automatic download of mac15.qcow2 into mac15-image/
+# =============================================================================
+
+set -e  # Exit immediately if any command fails
+
+GITHUB_REPO="https://github.com/nullvoider07/mac15-base"
+REPO_NAME=$(basename "$GITHUB_REPO")
+
+echo "🚀 Cloning GitHub repo: $GITHUB_REPO"
+
+# ----------------------------- Clone with GitHub CLI -----------------------
+echo "🔧 Checking GitHub CLI..."
+
+if ! command -v gh >/dev/null 2>&1; then
+    echo "   GitHub CLI not found. Attempting to install..."
+    
+    # Try Homebrew (macOS/Linux)
+    if command -v brew >/dev/null 2>&1; then
+        brew install gh
+    # Try APT (Debian/Ubuntu)
+    elif command -v apt-get >/dev/null 2>&1; then
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+        sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+        sudo apt-get update && sudo apt-get install gh -y
+    else
+        echo "❌ Unsupported package manager. Please install GitHub CLI manually:"
+        echo "   https://cli.github.com"
+        exit 1
+    fi
+else
+    echo "   ✅ GitHub CLI already available."
+fi
+
+gh repo clone "$GITHUB_REPO" "$REPO_NAME" -- --depth=1
+
+# ----------------------------- Ensure uv is available ---------------------
+echo "🔧 Checking uv..."
+
+if command -v uv >/dev/null 2>&1; then
+    echo "   uv already available — skipping installation."
+else
+    echo "   Installing uv package manager..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+    hash -r
+fi
+
+# ----------------------------- Ephemeral venv for huggingface-cli ----------
+# Create a temporary venv, install huggingface-hub into it, run the download,
+# then delete the venv. This avoids all PATH/hash-cache/interpreter-mismatch
+# issues caused by stale system-wide or tool-level installs.
+echo "🔧 Creating ephemeral venv for huggingface-cli..."
+
+HF_VENV="$(mktemp -d)/hf-venv"
+
+# uv venv picks the correct current Python automatically
+uv venv "$HF_VENV" --quiet
+
+# Install directly into the venv — no --system, no activation needed
+uv pip install --python "$HF_VENV/bin/python" transformers --quiet
+
+echo "   ✅ huggingface-hub installed in ephemeral venv."
+
+# ----------------------------- Download QCOW2 ------------------------------
+echo "📥 Downloading mac15.qcow2 (large file) into $REPO_NAME/mac15-image/ ..."
+echo "    (This may take a while — progress bar will show)"
+
+# Call huggingface-cli directly by its venv path — no PATH lookup, no cache
+"$HF_VENV/bin/hf" download NullVoider/mac15-base mac15.qcow2 \
+    --local-dir "$REPO_NAME/mac15-image"
+
+# ----------------------------- Cleanup venv --------------------------------
+echo "🧹 Cleaning up ephemeral venv..."
+rm -rf "$HF_VENV"
+
+# ----------------------------- Final message -------------------------------
+echo ""
+echo "✅ SUCCESS!"
+echo "   Repository cloned → $REPO_NAME/"
+echo "   QCOW2 image ready at: $REPO_NAME/mac15-image/mac15.qcow2"
+echo ""
+echo "   Next time just run: cd $REPO_NAME && git pull"
